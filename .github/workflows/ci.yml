@@ -54,7 +54,7 @@ jobs:
         run: docker compose up -d --build
 
       - name: Wait for API to respond
-        run: curl --silent --output /dev/null --retry 30 --retry-delay 2 --retry-connrefused http://localhost:8080
+        run: curl --silent --output /dev/null --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080
 
       - name: Show logs on failure
         if: failure()
