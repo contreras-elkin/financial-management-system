@@ -37,3 +37,31 @@ jobs:
           name: jacoco-report
           path: backend/**/target/site/jacoco/
           if-no-files-found: ignore
+
+  docker:
+    name: Docker compose smoke test
+    runs-on: ubuntu-latest
+    needs: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create .env from template
+        run: cp .env.example .env
+
+      - name: Build and start services
+        run: docker compose up -d --build
+
+      - name: Wait for API to respond
+        run: curl --silent --output /dev/null --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+
