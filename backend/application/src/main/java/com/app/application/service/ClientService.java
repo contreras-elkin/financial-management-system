@@ -10,6 +10,7 @@ import com.app.domain.model.Client;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -81,7 +82,11 @@ public class ClientService implements ClientUseCase {
                 });
     }
 
+    /**
+     * Se trunca a microsegundos, la precisión de TIMESTAMP en PostgreSQL, para que la respuesta
+     * al crear o actualizar coincida con lo que se lee después de la base de datos.
+     */
     private LocalDateTime now() {
-        return LocalDateTime.now(clock);
+        return LocalDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
     }
 }
