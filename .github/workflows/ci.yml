@@ -56,6 +56,34 @@ jobs:
       - name: Wait for API to respond
         run: curl --fail --silent --output /dev/null --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080/actuator/health
 
+      - name: Check client API end to end
+        env:
+          API: http://localhost:8080/api/clients
+          BODY: >-
+            {"identificationType":"CC","identificationNumber":"1000000001",
+            "firstName":"Ana","lastName":"Ruiz","email":"ana.ruiz@mail.com","birthDate":"1990-05-10"}
+        run: |
+          expect_status() {
+            local expected=$1 actual=$2 file=$3
+            if [ "$actual" != "$expected" ]; then
+              echo "Expected HTTP $expected but got $actual"; cat "$file"; exit 1
+            fi
+          }
+
+          echo "Create a client"
+          status=$(curl -s -o created.json -w '%{http_code}' -X POST "$API" -H 'Content-Type: application/json' -d "$BODY")
+          expect_status 201 "$status" created.json
+          id=$(jq -er '.id' created.json)
+
+          echo "Find the created client"
+          status=$(curl -s -o found.json -w '%{http_code}' "$API/$id")
+          expect_status 200 "$status" found.json
+          jq -e '.identificationNumber == "1000000001"' found.json
+
+          echo "Reject a duplicated identification"
+          status=$(curl -s -o duplicate.json -w '%{http_code}' -X POST "$API" -H 'Content-Type: application/json' -d "$BODY")
+          expect_status 409 "$status" duplicate.json
+
       - name: Show logs on failure
         if: failure()
         run: docker compose logs

@@ -65,6 +65,32 @@
 							<goal>report</goal>
 						</goals>
 					</execution>
+					<!-- Falla el build si la cobertura de líneas de services o controllers baja del 80 % -->
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>CLASS</element>
+									<includes>
+										<include>com.app.application.service.*</include>
+										<include>com.app.infrastructure.web.controller.*</include>
+									</includes>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.80</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 		</plugins>
