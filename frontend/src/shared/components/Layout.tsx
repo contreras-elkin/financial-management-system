@@ -2,13 +2,20 @@ import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
+import LinearProgress from '@mui/material/LinearProgress'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useNavigation } from 'react-router'
 
-const navItems = [{ label: 'Inicio', to: '/' }]
+const navItems = [
+  { label: 'Inicio', to: '/' },
+  { label: 'Clientes', to: '/clients' },
+]
 
 export function Layout() {
+  // 'loading' mientras se descarga el código de una página diferida antes de mostrarla.
+  const isNavigating = useNavigation().state === 'loading'
+
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <AppBar position="static">
@@ -25,6 +32,7 @@ export function Layout() {
           </Box>
         </Toolbar>
       </AppBar>
+      {isNavigating && <LinearProgress color="secondary" aria-label="Cargando página" />}
       <Container component="main" sx={{ py: 4, flexGrow: 1 }}>
         <Outlet />
       </Container>

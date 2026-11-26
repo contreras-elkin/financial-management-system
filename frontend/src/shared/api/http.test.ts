@@ -66,7 +66,7 @@ describe('http', () => {
     fetchMock.mockResolvedValue(
       jsonResponse(
         404,
-        { title: 'Resource not found', detail: 'Client 99 not found' },
+        { title: 'Resource not found', detail: 'Client 99 not found', code: 'CLIENT_NOT_FOUND' },
         'application/problem+json',
       ),
     )
@@ -76,6 +76,7 @@ describe('http', () => {
     expect(error.status).toBe(404)
     expect(error.title).toBe('Resource not found')
     expect(error.message).toBe('Client 99 not found')
+    expect(error.code).toBe('CLIENT_NOT_FOUND')
     expect(error.fieldErrors).toEqual({})
   })
 
@@ -86,6 +87,7 @@ describe('http', () => {
         {
           title: 'Invalid request',
           detail: 'One or more fields are invalid',
+          code: 'VALIDATION_FAILED',
           errors: { email: 'must be a well-formed email address' },
         },
         'application/problem+json',
@@ -95,6 +97,7 @@ describe('http', () => {
     const error = await captureError(http.post('/clients', {}))
 
     expect(error.status).toBe(400)
+    expect(error.code).toBe('VALIDATION_FAILED')
     expect(error.fieldErrors).toEqual({ email: 'must be a well-formed email address' })
   })
 
@@ -112,6 +115,7 @@ describe('http', () => {
     expect(error.status).toBe(502)
     expect(error.title).toBe('Bad Gateway')
     expect(error.message).toBe('La solicitud falló con el código 502')
+    expect(error.code).toBeNull()
   })
 
   it('maps a network failure to an ApiError with status 0', async () => {
@@ -121,5 +125,6 @@ describe('http', () => {
 
     expect(error.status).toBe(0)
     expect(error.message).toBe('No fue posible conectar con el servidor')
+    expect(error.code).toBeNull()
   })
 })
