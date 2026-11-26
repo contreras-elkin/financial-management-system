@@ -48,6 +48,7 @@ describe('ClientsPage', () => {
     expect(within(rows[1]).getByText('CC 100')).toBeInTheDocument()
     expect(within(rows[1]).getByText('ana@mail.com')).toBeInTheDocument()
     expect(within(rows[1]).getByText('10/05/1990')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('24/11/2026 10:00')).toBeInTheDocument()
     expect(within(rows[1]).getByText('25/11/2026 15:30')).toBeInTheDocument()
     expect(within(rows[2]).getByText('Luis')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/clients', expect.objectContaining({ method: 'GET' }))

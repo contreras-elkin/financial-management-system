@@ -8,15 +8,20 @@ import Typography from '@mui/material/Typography'
 import { useState } from 'react'
 import { ClientFormDialog } from './ClientFormDialog'
 import { ClientsTable } from './ClientsTable'
+import { DeleteClientDialog } from './DeleteClientDialog'
 import { useClients } from './hooks'
 import type { Client } from './types'
 
-/** Qué formulario está abierto: ninguno, el de alta o el de edición de un cliente. */
-type FormState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; client: Client }
+/** Qué diálogo está abierto: ninguno, el de alta, o el de edición o eliminación de un cliente. */
+type DialogState =
+  | { mode: 'closed' }
+  | { mode: 'create' }
+  | { mode: 'edit'; client: Client }
+  | { mode: 'delete'; client: Client }
 
 export function ClientsPage() {
-  const [form, setForm] = useState<FormState>({ mode: 'closed' })
-  const closeForm = () => setForm({ mode: 'closed' })
+  const [dialog, setDialog] = useState<DialogState>({ mode: 'closed' })
+  const closeDialog = () => setDialog({ mode: 'closed' })
 
   return (
     <>
@@ -24,29 +29,34 @@ export function ClientsPage() {
         <Typography variant="h4" component="h1">
           Clientes
         </Typography>
-        <Button variant="contained" onClick={() => setForm({ mode: 'create' })}>
+        <Button variant="contained" onClick={() => setDialog({ mode: 'create' })}>
           Nuevo cliente
         </Button>
       </Stack>
 
-      <ClientsContent onEdit={(client) => setForm({ mode: 'edit', client })} />
+      <ClientsContent
+        onEdit={(client) => setDialog({ mode: 'edit', client })}
+        onDelete={(client) => setDialog({ mode: 'delete', client })}
+      />
 
-      {/* El diálogo se monta al abrirse y se desmonta al cerrarse: cada apertura empieza con el formulario limpio. */}
-      {form.mode === 'create' && <ClientFormDialog onClose={closeForm} />}
-      {form.mode === 'edit' && <ClientFormDialog client={form.client} onClose={closeForm} />}
+      {/* Cada diálogo se monta al abrirse y se desmonta al cerrarse: siempre empieza limpio. */}
+      {dialog.mode === 'create' && <ClientFormDialog onClose={closeDialog} />}
+      {dialog.mode === 'edit' && <ClientFormDialog client={dialog.client} onClose={closeDialog} />}
+      {dialog.mode === 'delete' && <DeleteClientDialog client={dialog.client} onClose={closeDialog} />}
     </>
   )
 }
 
 type ClientsContentProps = {
   onEdit: (client: Client) => void
+  onDelete: (client: Client) => void
 }
 
 /**
  * Componente contenedor: obtiene los datos con useClients y decide qué mostrar
  * según el estado de la consulta (cargando, error, sin datos o la tabla).
  */
-function ClientsContent({ onEdit }: ClientsContentProps) {
+function ClientsContent({ onEdit, onDelete }: ClientsContentProps) {
   const { data: clients, isPending, isError, refetch } = useClients()
 
   if (isPending) {
@@ -80,5 +90,5 @@ function ClientsContent({ onEdit }: ClientsContentProps) {
     )
   }
 
-  return <ClientsTable clients={clients} onEdit={onEdit} />
+  return <ClientsTable clients={clients} onEdit={onEdit} onDelete={onDelete} />
 }
