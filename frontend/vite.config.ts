@@ -12,5 +12,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    // Los tests de componentes simulan al usuario tecleando campo por campo; en los runners
+    // del CI, más lentos que una máquina local, 5 s por defecto deja poco margen.
+    testTimeout: 10_000,
   },
 })

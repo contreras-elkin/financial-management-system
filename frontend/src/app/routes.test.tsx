@@ -4,16 +4,16 @@ import { describe, expect, it } from 'vitest'
 import { renderRoute } from '../test/renderRoute'
 
 describe('routes', () => {
-  it('renders the home page inside the layout', () => {
-    renderRoute('/')
+  it('renders the home page inside the layout', async () => {
+    await renderRoute('/')
 
     expect(screen.getByText('Financial Management')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Inicio' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Bienvenido' })).toBeInTheDocument()
   })
 
-  it('renders the not found page for an unknown path', () => {
-    renderRoute('/unknown')
+  it('renders the not found page for an unknown path', async () => {
+    await renderRoute('/unknown')
 
     expect(
       screen.getByRole('heading', { name: 'Página no encontrada' }),
@@ -22,7 +22,7 @@ describe('routes', () => {
 
   it('navigates back home from the not found page', async () => {
     const user = userEvent.setup()
-    renderRoute('/unknown')
+    await renderRoute('/unknown')
 
     await user.click(screen.getByRole('link', { name: 'Volver al inicio' }))
 

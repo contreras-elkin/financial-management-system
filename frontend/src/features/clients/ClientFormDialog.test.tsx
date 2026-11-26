@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderRoute } from '../../test/renderRoute'
 import type { Client } from './types'
 
@@ -37,7 +37,7 @@ function writeRequest() {
 }
 
 async function openCreateDialog(user: UserEvent) {
-  renderRoute('/clients')
+  await renderRoute('/clients')
   await screen.findByRole('table', { name: 'Clientes' })
   await user.click(screen.getByRole('button', { name: 'Nuevo cliente' }))
   return screen.getByRole('dialog', { name: 'Nuevo cliente' })
@@ -55,6 +55,10 @@ async function fillNewClient(user: UserEvent, dialog: HTMLElement) {
 }
 
 describe('ClientFormDialog', () => {
+  // La página se carga bajo demanda: se importa antes de los tests para que el primero
+  // no pague la carga del módulo dentro de su tiempo límite.
+  beforeAll(() => import('./ClientsPage'))
+
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
   })
@@ -65,7 +69,7 @@ describe('ClientFormDialog', () => {
   })
 
   it('creates a client, closes the dialog and reloads the list', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockApi(() => json(201, { ...ana, id: 2 }))
     const dialog = await openCreateDialog(user)
 
@@ -89,7 +93,7 @@ describe('ClientFormDialog', () => {
   })
 
   it('shows the validation errors and does not call the API', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockApi(() => json(201, ana))
     const dialog = await openCreateDialog(user)
 
@@ -105,7 +109,7 @@ describe('ClientFormDialog', () => {
   })
 
   it('shows a duplicated identification under its field and keeps the dialog open', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockApi(() => problem(409, 'CLIENT_ALREADY_EXISTS'))
     const dialog = await openCreateDialog(user)
 
@@ -119,7 +123,7 @@ describe('ClientFormDialog', () => {
   })
 
   it('shows an error that does not belong to a field in an alert', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockApi(() => problem(409, 'DATA_INTEGRITY_VIOLATION'))
     const dialog = await openCreateDialog(user)
 
@@ -132,9 +136,9 @@ describe('ClientFormDialog', () => {
   })
 
   it('edits only the personal data of a client', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockApi(() => json(200, { ...ana, firstName: 'Ana María' }))
-    renderRoute('/clients')
+    await renderRoute('/clients')
 
     await user.click(await screen.findByRole('button', { name: 'Editar a Ana Ruiz' }))
     const dialog = screen.getByRole('dialog', { name: 'Editar cliente' })
@@ -157,7 +161,7 @@ describe('ClientFormDialog', () => {
   })
 
   it('closes without saving when cancelling', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup({ delay: null })
     mockApi(() => json(201, ana))
     const dialog = await openCreateDialog(user)
 

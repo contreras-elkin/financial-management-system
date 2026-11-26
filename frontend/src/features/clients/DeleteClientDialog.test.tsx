@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderRoute } from '../../test/renderRoute'
 import type { Client } from './types'
 
@@ -32,12 +32,16 @@ function deleteRequests() {
 }
 
 async function openDeleteDialog(user: UserEvent) {
-  renderRoute('/clients')
+  await renderRoute('/clients')
   await user.click(await screen.findByRole('button', { name: 'Eliminar a Ana Ruiz' }))
   return screen.getByRole('dialog', { name: 'Eliminar cliente' })
 }
 
 describe('DeleteClientDialog', () => {
+  // La página se carga bajo demanda: se importa antes de los tests para que el primero
+  // no pague la carga del módulo dentro de su tiempo límite.
+  beforeAll(() => import('./ClientsPage'))
+
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
   })

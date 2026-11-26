@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderRoute } from '../../test/renderRoute'
 import type { Client } from './types'
 
@@ -25,6 +25,10 @@ function json(status: number, body: unknown) {
 }
 
 describe('ClientsPage', () => {
+  // La página se carga bajo demanda: se importa antes de los tests para que el primero
+  // no pague la carga del módulo dentro de su tiempo límite.
+  beforeAll(() => import('./ClientsPage'))
+
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
   })
@@ -37,7 +41,7 @@ describe('ClientsPage', () => {
   it('shows a loading indicator and then the clients in a table', async () => {
     fetchMock.mockResolvedValue(json(200, [ana, luis]))
 
-    renderRoute('/clients')
+    await renderRoute('/clients')
 
     expect(screen.getByRole('heading', { name: 'Clientes' })).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: 'Cargando clientes' })).toBeInTheDocument()
@@ -57,7 +61,7 @@ describe('ClientsPage', () => {
   it('shows a message when there are no clients', async () => {
     fetchMock.mockResolvedValue(json(200, []))
 
-    renderRoute('/clients')
+    await renderRoute('/clients')
 
     expect(await screen.findByText('No hay clientes registrados.')).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -67,7 +71,7 @@ describe('ClientsPage', () => {
     const user = userEvent.setup()
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue(json(200, [ana]))
 
-    renderRoute('/clients')
+    await renderRoute('/clients')
 
     expect(await screen.findByText('No fue posible cargar los clientes.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Reintentar' }))
@@ -79,11 +83,12 @@ describe('ClientsPage', () => {
   it('is reachable from the main navigation', async () => {
     const user = userEvent.setup()
     fetchMock.mockResolvedValue(json(200, []))
-    renderRoute('/')
+    await renderRoute('/')
 
     const nav = screen.getByRole('navigation', { name: 'Navegación principal' })
     await user.click(within(nav).getByRole('link', { name: 'Clientes' }))
 
-    expect(screen.getByRole('heading', { name: 'Clientes' })).toBeInTheDocument()
+    // La página se descarga bajo demanda: se espera a que aparezca.
+    expect(await screen.findByRole('heading', { name: 'Clientes' })).toBeInTheDocument()
   })
 })
