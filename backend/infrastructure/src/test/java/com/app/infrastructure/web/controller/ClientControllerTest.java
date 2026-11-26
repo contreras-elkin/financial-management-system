@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -109,6 +110,7 @@ class ClientControllerTest {
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Invalid request"))
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors.identificationNumber").exists())
                 .andExpect(jsonPath("$.errors.firstName").exists())
                 .andExpect(jsonPath("$.errors.birthDate").exists());
@@ -132,7 +134,19 @@ class ClientControllerTest {
 
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE_BODY))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.title").value("Duplicate resource"));
+                .andExpect(jsonPath("$.title").value("Duplicate resource"))
+                .andExpect(jsonPath("$.code").value("CLIENT_ALREADY_EXISTS"));
+    }
+
+    @Test
+    void create_whenDatabaseConstraintFails_returns409WithoutDatabaseDetails() throws Exception {
+        when(clientUseCase.create(any()))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE_BODY))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("DATA_INTEGRITY_VIOLATION"))
+                .andExpect(jsonPath("$.detail").value("The request conflicts with the current state of the data"));
     }
 
     @Test
@@ -142,6 +156,7 @@ class ClientControllerTest {
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE_BODY))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Business rule violated"))
+                .andExpect(jsonPath("$.code").value("CLIENT_UNDERAGE"))
                 .andExpect(jsonPath("$.detail").value("The client must be of legal age"));
     }
 
@@ -163,7 +178,8 @@ class ClientControllerTest {
 
         mockMvc.perform(get(BASE_URL + "/99"))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.title").value("Resource not found"));
+                .andExpect(jsonPath("$.title").value("Resource not found"))
+                .andExpect(jsonPath("$.code").value("CLIENT_NOT_FOUND"));
     }
 
     @Test
