@@ -134,7 +134,7 @@ class ClientControllerTest {
 
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE_BODY))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.title").value("Duplicate resource"))
+                .andExpect(jsonPath("$.title").value("Conflict with current state"))
                 .andExpect(jsonPath("$.code").value("CLIENT_ALREADY_EXISTS"));
     }
 

@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import com.app.domain.exception.ClientNotFoundException;
+import com.app.domain.exception.ConflictException;
 import com.app.domain.exception.DomainException;
-import com.app.domain.exception.DuplicateClientException;
+import com.app.domain.exception.NotFoundException;
 
 /**
  * Traduce las excepciones a respuestas HTTP con formato ProblemDetail (RFC 9457).
@@ -34,14 +34,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     static final String VALIDATION_FAILED = "VALIDATION_FAILED";
     static final String DATA_INTEGRITY_VIOLATION = "DATA_INTEGRITY_VIOLATION";
 
-    @ExceptionHandler(ClientNotFoundException.class)
-    public ProblemDetail handleNotFound(ClientNotFoundException ex) {
+    /*
+     * Los errores de negocio se traducen por categoría y no por clase concreta (OCP): una
+     * excepción nueva elige su status al heredar de NotFoundException, ConflictException o
+     * directamente de DomainException, sin modificar este manejador. Spring elige el
+     * @ExceptionHandler más específico, por eso las categorías tienen prioridad sobre DomainException.
+     */
+
+    @ExceptionHandler(NotFoundException.class)
+    public ProblemDetail handleNotFound(NotFoundException ex) {
         return problem(HttpStatus.NOT_FOUND, "Resource not found", ex.getCode(), ex.getMessage());
     }
 
-    @ExceptionHandler(DuplicateClientException.class)
-    public ProblemDetail handleDuplicate(DuplicateClientException ex) {
-        return problem(HttpStatus.CONFLICT, "Duplicate resource", ex.getCode(), ex.getMessage());
+    @ExceptionHandler(ConflictException.class)
+    public ProblemDetail handleConflict(ConflictException ex) {
+        return problem(HttpStatus.CONFLICT, "Conflict with current state", ex.getCode(), ex.getMessage());
     }
 
     /**
