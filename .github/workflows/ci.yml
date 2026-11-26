@@ -38,10 +38,40 @@ jobs:
           path: backend/**/target/site/jacoco/
           if-no-files-found: ignore
 
+  frontend:
+    name: Frontend lint, tests & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit and component tests
+        run: npm test
+
+      - name: Type check and build
+        run: npm run build
+
   docker:
     name: Docker compose smoke test
     runs-on: ubuntu-latest
-    needs: backend
+    needs: [backend, frontend]
 
     steps:
       - name: Checkout
@@ -83,6 +113,37 @@ jobs:
           echo "Reject a duplicated identification"
           status=$(curl -s -o duplicate.json -w '%{http_code}' -X POST "$API" -H 'Content-Type: application/json' -d "$BODY")
           expect_status 409 "$status" duplicate.json
+
+      - name: Check web and API proxy end to end
+        env:
+          WEB: http://localhost:3000
+        run: |
+          expect_status() {
+            local expected=$1 actual=$2 file=$3
+            if [ "$actual" != "$expected" ]; then
+              echo "Expected HTTP $expected but got $actual"; cat "$file"; exit 1
+            fi
+          }
+
+          echo "Serve the SPA"
+          status=$(curl -s -o index.html -w '%{http_code}' --retry 10 --retry-delay 2 --retry-all-errors "$WEB/")
+          expect_status 200 "$status" index.html
+          grep -q '<div id="root">' index.html
+
+          echo "Fall back to index.html on a client-side route"
+          status=$(curl -s -o route.html -w '%{http_code}' "$WEB/clients")
+          expect_status 200 "$status" route.html
+          grep -q '<div id="root">' route.html
+
+          echo "Reach the API through the proxy"
+          status=$(curl -s -o clients.json -w '%{http_code}' "$WEB/api/clients")
+          expect_status 200 "$status" clients.json
+          jq -e 'any(.[]; .identificationNumber == "1000000001")' clients.json
+
+          echo "Forward API errors through the proxy"
+          status=$(curl -s -o missing.json -w '%{http_code}' "$WEB/api/clients/999999")
+          expect_status 404 "$status" missing.json
+          jq -e '.status == 404' missing.json
 
       - name: Show logs on failure
         if: failure()
