@@ -8,6 +8,12 @@ export const identificationTypes = ['CC', 'CE', 'PA'] as const
 
 export type IdentificationType = (typeof identificationTypes)[number]
 
+export const identificationTypeLabels: Record<IdentificationType, string> = {
+  CC: 'Cédula de ciudadanía',
+  CE: 'Cédula de extranjería',
+  PA: 'Pasaporte',
+}
+
 export type Client = {
   id: number
   identificationType: IdentificationType
