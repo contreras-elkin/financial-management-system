@@ -6,7 +6,10 @@ import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import { NavLink, Outlet } from 'react-router'
 
-const navItems = [{ label: 'Inicio', to: '/' }]
+const navItems = [
+  { label: 'Inicio', to: '/' },
+  { label: 'Clientes', to: '/clients' },
+]
 
 export function Layout() {
   return (
