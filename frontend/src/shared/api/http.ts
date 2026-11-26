@@ -9,6 +9,7 @@ const BASE_URL = '/api'
 type ProblemDetail = {
   title?: string
   detail?: string
+  code?: string
   errors?: FieldErrors
 }
 
@@ -26,7 +27,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       body: body === undefined ? undefined : JSON.stringify(body),
     })
   } catch {
-    throw new ApiError(0, 'Network error', 'No fue posible conectar con el servidor')
+    throw new ApiError({
+      status: 0,
+      title: 'Network error',
+      message: 'No fue posible conectar con el servidor',
+    })
   }
 
   if (!response.ok) {
@@ -40,12 +45,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 async function toApiError(response: Response): Promise<ApiError> {
   const problem = await readProblemDetail(response)
-  return new ApiError(
-    response.status,
-    problem?.title ?? response.statusText,
-    problem?.detail ?? `La solicitud falló con el código ${response.status}`,
-    problem?.errors ?? {},
-  )
+  return new ApiError({
+    status: response.status,
+    title: problem?.title ?? response.statusText,
+    message: problem?.detail ?? `La solicitud falló con el código ${response.status}`,
+    code: problem?.code ?? null,
+    fieldErrors: problem?.errors ?? {},
+  })
 }
 
 /**
