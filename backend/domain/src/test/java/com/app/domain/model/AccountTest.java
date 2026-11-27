@@ -31,7 +31,7 @@ class AccountTest {
         assertThat(account.getType()).isEqualTo(AccountType.SAVINGS);
         assertThat(account.getNumber()).isEqualTo(SAVINGS_NUMBER);
         assertThat(account.getStatus()).isEqualTo(AccountStatus.ACTIVE);
-        assertThat(account.getBalance()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(account.getBalance()).isEqualTo(new BigDecimal("0.00"));
         assertThat(account.isGmfExempt()).isTrue();
         assertThat(account.getClientId()).isEqualTo(CLIENT_ID);
         assertThat(account.getCreatedAt()).isEqualTo(NOW);

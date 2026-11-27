@@ -8,15 +8,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
-/**
- * Producto financiero (cuenta de ahorros o corriente) de un cliente. Modelo rico: controla
- * sus propios cambios de estado, de modo que nunca puede quedar en una situación inválida
- * (por ejemplo, cancelada con saldo o reactivada después de cancelarse).
- * El cliente se referencia por su id: cuenta y cliente son agregados distintos.
- */
 public class Account {
 
     private static final Pattern NUMBER_PATTERN = Pattern.compile("^\\d{10}$");
+    private static final BigDecimal INITIAL_BALANCE = new BigDecimal("0.00");
 
     private final Long id;
     private final AccountType type;
@@ -42,19 +37,15 @@ public class Account {
     }
 
     /**
-     * Abre una cuenta nueva: activa y con saldo cero. El saldo solo cambiará con transacciones.
-     * El número lo genera quien llama (es único en todo el sistema); aquí se valida su formato.
+     * El número lo genera quien llama, porque su unicidad depende de los demás; aquí solo se valida el formato.
      */
     public static Account create(AccountType type, String number, Long clientId, boolean gmfExempt,
                                  LocalDateTime now) {
         validate(type, number, clientId);
-        return new Account(null, type, number, AccountStatus.ACTIVE, BigDecimal.ZERO, gmfExempt, clientId,
+        return new Account(null, type, number, AccountStatus.ACTIVE, INITIAL_BALANCE, gmfExempt, clientId,
                 now, now);
     }
 
-    /**
-     * Reconstruye una cuenta ya persistida. No vuelve a validar: lo guardado ya cumplió las reglas.
-     */
     public static Account restore(Long id, AccountType type, String number, AccountStatus status,
                                   BigDecimal balance, boolean gmfExempt, Long clientId,
                                   LocalDateTime createdAt, LocalDateTime updatedAt) {
@@ -69,9 +60,6 @@ public class Account {
         changeStatus(AccountStatus.INACTIVE, now);
     }
 
-    /**
-     * Cancela la cuenta. Solo es posible con saldo cero, y es definitivo.
-     */
     public void cancel(LocalDateTime now) {
         if (status != AccountStatus.CANCELLED && balance.signum() != 0) {
             throw new AccountBalanceNotZeroException(number);
@@ -79,10 +67,7 @@ public class Account {
         changeStatus(AccountStatus.CANCELLED, now);
     }
 
-    /**
-     * Pedir el estado que ya tiene no es un error ni una modificación (operación idempotente):
-     * no se lanza excepción ni cambia la fecha de modificación.
-     */
+    // Pedir el estado actual es idempotente: no falla ni cambia updatedAt.
     private void changeStatus(AccountStatus target, LocalDateTime now) {
         if (status == target) {
             return;
