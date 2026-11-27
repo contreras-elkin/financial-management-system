@@ -1,11 +1,17 @@
 package com.app.domain.model;
 
 import com.app.domain.exception.AccountBalanceNotZeroException;
+import com.app.domain.exception.AccountNotActiveException;
+import com.app.domain.exception.InsufficientFundsException;
 import com.app.domain.exception.InvalidAccountDataException;
 import com.app.domain.exception.InvalidAccountStatusTransitionException;
+import com.app.domain.exception.InvalidTransactionDataException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 public class Account {
@@ -17,7 +23,7 @@ public class Account {
     private final AccountType type;
     private final String number;
     private AccountStatus status;
-    private final BigDecimal balance;
+    private BigDecimal balance;
     private final BigDecimal overdraftLimit;
     private final boolean gmfExempt;
     private final Long clientId;
@@ -59,6 +65,47 @@ public class Account {
         return balance.add(overdraftLimit);
     }
 
+    public Transaction deposit(BigDecimal amount, LocalDateTime now) {
+        BigDecimal validAmount = Transaction.requireValidAmount(amount);
+        requireActive();
+        credit(validAmount, now);
+        return Transaction.create(this, TransactionType.DEPOSIT, TransactionDirection.CREDIT, validAmount, null,
+                UUID.randomUUID(), now);
+    }
+
+    public Transaction withdraw(BigDecimal amount, LocalDateTime now) {
+        BigDecimal validAmount = Transaction.requireValidAmount(amount);
+        requireActive();
+        requireFunds(validAmount);
+        debit(validAmount, now);
+        return Transaction.create(this, TransactionType.WITHDRAWAL, TransactionDirection.DEBIT, validAmount, null,
+                UUID.randomUUID(), now);
+    }
+
+    // Todo se valida antes de mover dinero, para que un error no deje una de las dos cuentas a medias.
+    // Devuelve el débito de esta cuenta y el crédito de la destino, unidos por la misma referencia.
+    public List<Transaction> transferTo(Account target, BigDecimal amount, LocalDateTime now) {
+        if (target == null) {
+            throw new InvalidTransactionDataException("Target account is required");
+        }
+        if (Objects.equals(id, target.id)) {
+            throw new InvalidTransactionDataException("Cannot transfer to the same account");
+        }
+        BigDecimal validAmount = Transaction.requireValidAmount(amount);
+        requireActive();
+        target.requireActive();
+        requireFunds(validAmount);
+
+        debit(validAmount, now);
+        target.credit(validAmount, now);
+        UUID reference = UUID.randomUUID();
+        return List.of(
+                Transaction.create(this, TransactionType.TRANSFER, TransactionDirection.DEBIT, validAmount,
+                        target.id, reference, now),
+                Transaction.create(target, TransactionType.TRANSFER, TransactionDirection.CREDIT, validAmount,
+                        id, reference, now));
+    }
+
     public void activate(LocalDateTime now) {
         changeStatus(AccountStatus.ACTIVE, now);
     }
@@ -83,6 +130,28 @@ public class Account {
             throw new InvalidAccountStatusTransitionException(status, target);
         }
         this.status = target;
+        this.updatedAt = now;
+    }
+
+    private void requireActive() {
+        if (status != AccountStatus.ACTIVE) {
+            throw new AccountNotActiveException(number);
+        }
+    }
+
+    private void requireFunds(BigDecimal amount) {
+        if (amount.compareTo(availableBalance()) > 0) {
+            throw new InsufficientFundsException(number);
+        }
+    }
+
+    private void credit(BigDecimal amount, LocalDateTime now) {
+        this.balance = balance.add(amount);
+        this.updatedAt = now;
+    }
+
+    private void debit(BigDecimal amount, LocalDateTime now) {
+        this.balance = balance.subtract(amount);
         this.updatedAt = now;
     }
 
