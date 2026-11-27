@@ -25,6 +25,8 @@ const savings: Account = {
   number: '5300000001',
   status: 'ACTIVE',
   balance: 2450000,
+  overdraftLimit: 0,
+  availableBalance: 2450000,
   gmfExempt: true,
   clientId: 1,
   createdAt: '2026-11-25T09:00:00',
@@ -37,7 +39,9 @@ const checking: Account = {
   type: 'CHECKING',
   number: '3300000001',
   status: 'INACTIVE',
-  balance: 0,
+  balance: -300000,
+  overdraftLimit: 1000000,
+  availableBalance: 700000,
   gmfExempt: false,
   clientId: 2,
 }
@@ -72,7 +76,7 @@ describe('AccountsPage', () => {
     vi.unstubAllGlobals()
   })
 
-  it('shows the accounts with their client, balance, status and GMF exemption', async () => {
+  it('shows the accounts with their client, balances, status and GMF exemption', async () => {
     mockApi({ '/api/accounts': [savings, checking] })
 
     await renderRoute('/accounts')
@@ -86,12 +90,16 @@ describe('AccountsPage', () => {
     expect(within(rows[1]).getByRole('img', { name: 'Exenta de GMF' })).toBeInTheDocument()
     expect(within(rows[1]).getByText('Ahorros')).toBeInTheDocument()
     expect(await within(rows[1]).findByText('Ana Ruiz')).toBeInTheDocument()
-    expect(within(rows[1]).getByText('$ 2.450.000,00')).toBeInTheDocument()
+    expect(within(rows[1]).getAllByText('$ 2.450.000,00')).toHaveLength(2)
+    expect(within(rows[1]).queryByText(/^Cupo/)).not.toBeInTheDocument()
     expect(within(rows[1]).getByText('Activa')).toBeInTheDocument()
     expect(within(rows[1]).getByText('26/11/2026 14:20')).toBeInTheDocument()
 
     expect(within(rows[2]).getByText('Corriente')).toBeInTheDocument()
     expect(within(rows[2]).getByText('Luis Gómez')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('-$ 300.000,00')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('$ 700.000,00')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('Cupo $ 1.000.000,00')).toBeInTheDocument()
     expect(within(rows[2]).getByText('Inactiva')).toBeInTheDocument()
     expect(within(rows[2]).queryByRole('img', { name: 'Exenta de GMF' })).not.toBeInTheDocument()
   })

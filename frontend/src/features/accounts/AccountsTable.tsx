@@ -11,6 +11,7 @@ import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
+import Typography from '@mui/material/Typography'
 import { formatCurrency, formatDateTime } from '../../shared/format'
 import { AccountStatusChip } from './AccountStatusChip'
 import { accountTypeLabels, type Account, type AccountStatus, type AccountStatusAction } from './types'
@@ -50,6 +51,7 @@ export function AccountsTable({ accounts, clientName, onChangeStatus }: Accounts
             <TableCell>Tipo</TableCell>
             <TableCell>Cliente</TableCell>
             <TableCell align="right">Saldo</TableCell>
+            <TableCell align="right">Disponible</TableCell>
             <TableCell>Estado</TableCell>
             <TableCell>Fecha de creación</TableCell>
             <TableCell>Última modificación</TableCell>
@@ -74,8 +76,19 @@ export function AccountsTable({ accounts, clientName, onChangeStatus }: Accounts
               </TableCell>
               <TableCell>{accountTypeLabels[account.type]}</TableCell>
               <TableCell>{clientName(account.clientId)}</TableCell>
-              <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+              <TableCell
+                align="right"
+                sx={{ whiteSpace: 'nowrap', color: account.balance < 0 ? 'error.main' : undefined }}
+              >
                 {formatCurrency(account.balance)}
+              </TableCell>
+              <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                {formatCurrency(account.availableBalance)}
+                {account.overdraftLimit > 0 && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                    Cupo {formatCurrency(account.overdraftLimit)}
+                  </Typography>
+                )}
               </TableCell>
               <TableCell>
                 <AccountStatusChip status={account.status} />
