@@ -31,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.app.application.port.in.ClientUseCase;
 import com.app.application.port.in.CreateClientCommand;
 import com.app.application.port.in.UpdateClientCommand;
+import com.app.domain.exception.ClientHasProductsException;
 import com.app.domain.exception.ClientNotFoundException;
 import com.app.domain.exception.DuplicateClientException;
 import com.app.domain.exception.UnderageClientException;
@@ -134,7 +135,7 @@ class ClientControllerTest {
 
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(VALID_CREATE_BODY))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.title").value("Duplicate resource"))
+                .andExpect(jsonPath("$.title").value("Conflict with current state"))
                 .andExpect(jsonPath("$.code").value("CLIENT_ALREADY_EXISTS"));
     }
 
@@ -234,6 +235,15 @@ class ClientControllerTest {
 
         mockMvc.perform(delete(BASE_URL + "/99"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_whenClientHasProducts_returns409() throws Exception {
+        doThrow(new ClientHasProductsException(1L)).when(clientUseCase).delete(1L);
+
+        mockMvc.perform(delete(BASE_URL + "/1"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CLIENT_HAS_PRODUCTS"));
     }
 
     // ---------- helpers ----------

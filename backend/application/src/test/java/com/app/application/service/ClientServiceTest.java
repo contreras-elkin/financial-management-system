@@ -25,7 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.app.application.port.in.CreateClientCommand;
 import com.app.application.port.in.UpdateClientCommand;
+import com.app.application.port.out.AccountRepository;
 import com.app.application.port.out.ClientRepository;
+import com.app.domain.exception.ClientHasProductsException;
 import com.app.domain.exception.ClientNotFoundException;
 import com.app.domain.exception.DuplicateClientException;
 import com.app.domain.exception.UnderageClientException;
@@ -33,7 +35,7 @@ import com.app.domain.model.Client;
 import com.app.domain.model.IdentificationType;
 
 /**
- * Test unitario del caso de uso: el puerto de salida se reemplaza por un mock (sin base de datos)
+ * Test unitario del caso de uso: los puertos de salida se reemplazan por mocks (sin base de datos)
  * y el reloj se fija para que las fechas sean deterministas.
  */
 @ExtendWith(MockitoExtension.class)
@@ -46,6 +48,9 @@ class ClientServiceTest {
     @Mock
     private ClientRepository clientRepository;
 
+    @Mock
+    private AccountRepository accountRepository;
+
     @Captor
     private ArgumentCaptor<Client> clientCaptor;
 
@@ -54,7 +59,7 @@ class ClientServiceTest {
     @BeforeEach
     void setUp() {
         Clock fixedClock = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
-        clientService = new ClientService(clientRepository, fixedClock);
+        clientService = new ClientService(clientRepository, accountRepository, fixedClock);
     }
 
     // ---------- create ----------
@@ -155,8 +160,9 @@ class ClientServiceTest {
     // ---------- delete ----------
 
     @Test
-    void delete_whenClientExists_deletesIt() {
+    void delete_whenClientHasNoAccounts_deletesIt() {
         when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient(1L)));
+        when(accountRepository.existsByClientId(1L)).thenReturn(false);
 
         clientService.delete(1L);
 
@@ -169,6 +175,17 @@ class ClientServiceTest {
 
         assertThatThrownBy(() -> clientService.delete(99L))
                 .isInstanceOf(ClientNotFoundException.class);
+
+        verify(clientRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void delete_whenClientHasAccounts_throwsAndDoesNotDelete() {
+        when(clientRepository.findById(1L)).thenReturn(Optional.of(existingClient(1L)));
+        when(accountRepository.existsByClientId(1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> clientService.delete(1L))
+                .isInstanceOf(ClientHasProductsException.class);
 
         verify(clientRepository, never()).deleteById(any());
     }

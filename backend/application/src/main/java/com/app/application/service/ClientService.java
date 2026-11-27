@@ -3,7 +3,9 @@ package com.app.application.service;
 import com.app.application.port.in.ClientUseCase;
 import com.app.application.port.in.CreateClientCommand;
 import com.app.application.port.in.UpdateClientCommand;
+import com.app.application.port.out.AccountRepository;
 import com.app.application.port.out.ClientRepository;
+import com.app.domain.exception.ClientHasProductsException;
 import com.app.domain.exception.ClientNotFoundException;
 import com.app.domain.exception.DuplicateClientException;
 import com.app.domain.model.Client;
@@ -13,17 +15,15 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-/**
- * Implementa los casos de uso de clientes. Orquesta: busca, delega las reglas al dominio y persiste
- * a través del puerto de salida, sin conocer la tecnología de base de datos.
- */
 public class ClientService implements ClientUseCase {
 
     private final ClientRepository clientRepository;
+    private final AccountRepository accountRepository;
     private final Clock clock;
 
-    public ClientService(ClientRepository clientRepository, Clock clock) {
+    public ClientService(ClientRepository clientRepository, AccountRepository accountRepository, Clock clock) {
         this.clientRepository = clientRepository;
+        this.accountRepository = accountRepository;
         this.clock = clock;
     }
 
@@ -67,13 +67,13 @@ public class ClientService implements ClientUseCase {
     @Override
     public void delete(Long id) {
         findById(id);
+        if (accountRepository.existsByClientId(id)) {
+            throw new ClientHasProductsException(id);
+        }
         clientRepository.deleteById(id);
     }
 
-    /**
-     * La unicidad depende de los demás clientes, por eso no la valida el modelo sino el caso de uso.
-     * La restricción UNIQUE de la base de datos la garantiza ante peticiones concurrentes.
-     */
+    // Ante peticiones concurrentes, la restricción UNIQUE de la base de datos es la garantía final.
     private void ensureIdentificationIsAvailable(Client client) {
         clientRepository.findByIdentification(client.getIdentificationType(), client.getIdentificationNumber())
                 .ifPresent(existing -> {
@@ -82,10 +82,7 @@ public class ClientService implements ClientUseCase {
                 });
     }
 
-    /**
-     * Se trunca a microsegundos, la precisión de TIMESTAMP en PostgreSQL, para que la respuesta
-     * al crear o actualizar coincida con lo que se lee después de la base de datos.
-     */
+    // Microsegundos: la precisión de TIMESTAMP en PostgreSQL.
     private LocalDateTime now() {
         return LocalDateTime.now(clock).truncatedTo(ChronoUnit.MICROS);
     }

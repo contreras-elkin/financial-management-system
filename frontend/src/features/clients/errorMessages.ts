@@ -6,4 +6,5 @@ export const clientErrorMessages: ErrorMessages = {
   CLIENT_ALREADY_EXISTS: 'Ya existe un cliente con este tipo y número de identificación.',
   CLIENT_UNDERAGE: 'El cliente debe ser mayor de edad.',
   INVALID_CLIENT_DATA: 'Los datos del cliente no son válidos.',
+  CLIENT_HAS_PRODUCTS: 'No se puede eliminar un cliente con productos vinculados.',
 }

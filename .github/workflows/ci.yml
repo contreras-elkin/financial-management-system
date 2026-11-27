@@ -104,6 +104,7 @@ jobs:
           status=$(curl -s -o created.json -w '%{http_code}' -X POST "$API" -H 'Content-Type: application/json' -d "$BODY")
           expect_status 201 "$status" created.json
           id=$(jq -er '.id' created.json)
+          echo "CLIENT_ID=$id" >> "$GITHUB_ENV"
 
           echo "Find the created client"
           status=$(curl -s -o found.json -w '%{http_code}' "$API/$id")
@@ -113,6 +114,39 @@ jobs:
           echo "Reject a duplicated identification"
           status=$(curl -s -o duplicate.json -w '%{http_code}' -X POST "$API" -H 'Content-Type: application/json' -d "$BODY")
           expect_status 409 "$status" duplicate.json
+
+      - name: Check account API end to end
+        env:
+          API: http://localhost:8080/api
+        run: |
+          expect_status() {
+            local expected=$1 actual=$2 file=$3
+            if [ "$actual" != "$expected" ]; then
+              echo "Expected HTTP $expected but got $actual"; cat "$file"; exit 1
+            fi
+          }
+
+          echo "Open a savings account for the client"
+          status=$(curl -s -o account.json -w '%{http_code}' -X POST "$API/accounts" -H 'Content-Type: application/json' \
+            -d "{\"clientId\":$CLIENT_ID,\"type\":\"SAVINGS\",\"gmfExempt\":false}")
+          expect_status 201 "$status" account.json
+          jq -e '(.number | test("^53[0-9]{8}$")) and .status == "ACTIVE" and .balance == 0' account.json
+          id=$(jq -er '.id' account.json)
+
+          echo "Cancel the account with zero balance"
+          status=$(curl -s -o cancelled.json -w '%{http_code}' -X PATCH "$API/accounts/$id/cancel")
+          expect_status 200 "$status" cancelled.json
+          jq -e '.status == "CANCELLED"' cancelled.json
+
+          echo "Reject reactivating a cancelled account"
+          status=$(curl -s -o reactivated.json -w '%{http_code}' -X PATCH "$API/accounts/$id/activate")
+          expect_status 409 "$status" reactivated.json
+          jq -e '.code == "INVALID_ACCOUNT_STATUS_TRANSITION"' reactivated.json
+
+          echo "Reject deleting a client with products"
+          status=$(curl -s -o delete.json -w '%{http_code}' -X DELETE "$API/clients/$CLIENT_ID")
+          expect_status 409 "$status" delete.json
+          jq -e '.code == "CLIENT_HAS_PRODUCTS"' delete.json
 
       - name: Check web and API proxy end to end
         env:
