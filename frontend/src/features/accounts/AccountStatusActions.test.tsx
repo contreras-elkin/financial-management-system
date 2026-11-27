@@ -10,6 +10,8 @@ const active: Account = {
   number: '5300000001',
   status: 'ACTIVE',
   balance: 0,
+  overdraftLimit: 0,
+  availableBalance: 0,
   gmfExempt: false,
   clientId: 1,
   createdAt: '2026-11-25T09:00:00',

@@ -148,6 +148,55 @@ jobs:
           expect_status 409 "$status" delete.json
           jq -e '.code == "CLIENT_HAS_PRODUCTS"' delete.json
 
+      - name: Check transaction API end to end
+        env:
+          API: http://localhost:8080/api
+        run: |
+          expect_status() {
+            local expected=$1 actual=$2 file=$3
+            if [ "$actual" != "$expected" ]; then
+              echo "Expected HTTP $expected but got $actual"; cat "$file"; exit 1
+            fi
+          }
+          open_account() {
+            curl -s -X POST "$API/accounts" -H 'Content-Type: application/json' \
+              -d "{\"clientId\":$CLIENT_ID,\"type\":\"$1\",\"gmfExempt\":false}" | jq -er '.id'
+          }
+
+          echo "Open a savings and a checking account"
+          savings=$(open_account SAVINGS)
+          checking=$(open_account CHECKING)
+
+          echo "Deposit into the savings account"
+          status=$(curl -s -o deposit.json -w '%{http_code}' -X POST "$API/transactions/deposits" \
+            -H 'Content-Type: application/json' -d "{\"accountId\":$savings,\"amount\":100}")
+          expect_status 201 "$status" deposit.json
+          jq -e '.type == "DEPOSIT" and .direction == "CREDIT" and .balanceAfter == 100' deposit.json
+
+          echo "Reject a withdrawal that leaves the savings account below zero"
+          status=$(curl -s -o withdrawal.json -w '%{http_code}' -X POST "$API/transactions/withdrawals" \
+            -H 'Content-Type: application/json' -d "{\"accountId\":$savings,\"amount\":150}")
+          expect_status 409 "$status" withdrawal.json
+          jq -e '.code == "INSUFFICIENT_FUNDS"' withdrawal.json
+
+          echo "Transfer to the checking account"
+          status=$(curl -s -o transfer.json -w '%{http_code}' -X POST "$API/transactions/transfers" \
+            -H 'Content-Type: application/json' \
+            -d "{\"sourceAccountId\":$savings,\"targetAccountId\":$checking,\"amount\":40}")
+          expect_status 201 "$status" transfer.json
+          jq -e 'length == 2 and .[0].direction == "DEBIT" and .[1].direction == "CREDIT"
+            and .[0].reference == .[1].reference' transfer.json
+
+          echo "List the checking account statement"
+          status=$(curl -s -o statement.json -w '%{http_code}' "$API/accounts/$checking/transactions")
+          expect_status 200 "$status" statement.json
+          jq -e 'length == 1 and .[0].type == "TRANSFER" and .[0].direction == "CREDIT"' statement.json
+
+          echo "Update the balance and the available balance"
+          status=$(curl -s -o checking.json -w '%{http_code}' "$API/accounts/$checking")
+          expect_status 200 "$status" checking.json
+          jq -e '.balance == 40 and .availableBalance == 1000040' checking.json
+
       - name: Check web and API proxy end to end
         env:
           WEB: http://localhost:3000

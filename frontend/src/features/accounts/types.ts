@@ -22,6 +22,8 @@ export type Account = {
   number: string
   status: AccountStatus
   balance: number
+  overdraftLimit: number
+  availableBalance: number
   gmfExempt: boolean
   clientId: number
   createdAt: string

@@ -41,6 +41,9 @@ public class AccountEntity {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;
 
+    @Column(nullable = false, updatable = false, precision = 19, scale = 2)
+    private BigDecimal overdraftLimit;
+
     @Column(nullable = false, updatable = false)
     private boolean gmfExempt;
 
@@ -57,12 +60,13 @@ public class AccountEntity {
     }
 
     public AccountEntity(Long id, AccountType type, String number, AccountStatus status, BigDecimal balance,
-                         boolean gmfExempt, Long clientId, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                         BigDecimal overdraftLimit, boolean gmfExempt, Long clientId, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.type = type;
         this.number = number;
         this.status = status;
         this.balance = balance;
+        this.overdraftLimit = overdraftLimit;
         this.gmfExempt = gmfExempt;
         this.clientId = clientId;
         this.createdAt = createdAt;
@@ -74,6 +78,7 @@ public class AccountEntity {
     public String getNumber() { return number; }
     public AccountStatus getStatus() { return status; }
     public BigDecimal getBalance() { return balance; }
+    public BigDecimal getOverdraftLimit() { return overdraftLimit; }
     public boolean isGmfExempt() { return gmfExempt; }
     public Long getClientId() { return clientId; }
     public LocalDateTime getCreatedAt() { return createdAt; }

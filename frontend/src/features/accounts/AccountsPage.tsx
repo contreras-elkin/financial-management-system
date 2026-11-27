@@ -11,6 +11,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { fullName } from '../clients/format'
 import { useClients } from '../clients/hooks'
 import type { Client } from '../clients/types'
 import { errorMessage } from '../../shared/api/errorMessage'
@@ -88,10 +89,6 @@ export function AccountsPage() {
 }
 
 type DialogState = { mode: 'closed' } | { mode: 'open' } | { mode: 'cancel'; account: Account }
-
-function fullName(client: Client) {
-  return `${client.firstName} ${client.lastName}`
-}
 
 type AccountsContentProps = {
   clientId?: number
