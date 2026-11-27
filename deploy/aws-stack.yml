@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Financial Management - EC2 with docker compose behind CloudFront
+
+Parameters:
+  AppVersion:
+    Type: String
+    Description: Image tag published in GHCR (e.g. 0.1.0)
+  GitRef:
+    Type: String
+    Default: main
+    Description: Branch or tag cloned to get the compose files
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  CloudFrontPrefixList:
+    Type: String
+    Default: pl-3b927c52
+    Description: Managed prefix list com.amazonaws.global.cloudfront.origin-facing (us-east-1)
+
+Resources:
+  # Sin puerto 22: el acceso administrativo es por SSM Session Manager
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP only from CloudFront
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourcePrefixListId: !Ref CloudFrontPrefixList
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref InstanceRole
+
+  AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds:
+        - !GetAtt WebSecurityGroup.GroupId
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: 10
+            Encrypted: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-app
+      # Solo corre en el primer arranque. La contraseña de la BD se genera aquí y nunca sale de la instancia.
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+
+          dnf install -y docker git
+          systemctl enable --now docker
+          mkdir -p /usr/local/lib/docker/cli-plugins
+          curl -fsSL https://github.com/docker/compose/releases/download/v2.40.3/docker-compose-linux-x86_64 \
+            -o /usr/local/lib/docker/cli-plugins/docker-compose
+          chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+          # 1 GB de RAM no alcanza para el JVM y Postgres sin swap
+          dd if=/dev/zero of=/swapfile bs=1M count=2048
+          chmod 600 /swapfile
+          mkswap /swapfile
+          swapon /swapfile
+          echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
+
+          git clone --depth 1 --branch ${GitRef} https://github.com/contreras-elkin/financial-management-system.git /opt/fms
+          cd /opt/fms
+          umask 077
+          cat > .env <<EOF
+          POSTGRES_DB=financial_db
+          POSTGRES_USER=financial_user
+          POSTGRES_PASSWORD=$(openssl rand -hex 24)
+          APP_VERSION=${AppVersion}
+          EOF
+
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+  # IP fija para que el origen de CloudFront no cambie al apagar y encender la instancia
+  AppElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref AppInstance
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Ref AWS::StackName
+        PriceClass: PriceClass_100
+        HttpVersion: http2and3
+        Origins:
+          - Id: app
+            # CloudFront necesita un nombre DNS: es el nombre público de la IP elástica
+            DomainName: !Sub
+              - ec2-${Dashed}.compute-1.amazonaws.com
+              - Dashed: !Join ['-', !Split ['.', !Ref AppElasticIp]]
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              HTTPPort: 80
+        DefaultCacheBehavior:
+          TargetOriginId: app
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: app
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Managed-CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # Managed-AllViewerExceptHostHeader
+
+Outputs:
+  Url:
+    Value: !Sub https://${Distribution.DomainName}
+  InstanceId:
+    Value: !Ref AppInstance

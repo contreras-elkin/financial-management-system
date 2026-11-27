@@ -1,0 +1,21 @@
+# Override para el servidor: usa las imágenes publicadas en GHCR en lugar de compilar.
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+services:
+  db:
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/contreras-elkin/financial-management-api:${APP_VERSION:?APP_VERSION is required}
+    build: !reset null
+    # Solo se llega a la API a través del proxy de web
+    ports: !reset []
+    # Sin límite, MaxRAMPercentage se calcula sobre toda la máquina y deja sin memoria a Postgres
+    mem_limit: 512m
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/contreras-elkin/financial-management-web:${APP_VERSION:?APP_VERSION is required}
+    build: !reset null
+    ports: !override
+      - "80:8080"
+    restart: unless-stopped
