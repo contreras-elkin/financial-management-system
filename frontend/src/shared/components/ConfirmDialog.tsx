@@ -12,6 +12,8 @@ type ConfirmDialogProps = {
   title: string
   children: ReactNode
   confirmLabel: string
+  // Para cuando la acción también se llama "cancelar" y los dos botones se confundirían.
+  closeLabel?: string
   /** Mientras la acción está en curso no se puede cerrar ni confirmar de nuevo. */
   pending?: boolean
   error?: string
@@ -27,6 +29,7 @@ export function ConfirmDialog({
   title,
   children,
   confirmLabel,
+  closeLabel = 'Cancelar',
   pending = false,
   error,
   onConfirm,
@@ -43,7 +46,7 @@ export function ConfirmDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={pending}>
-          Cancelar
+          {closeLabel}
         </Button>
         <Button onClick={onConfirm} color="error" variant="contained" loading={pending}>
           {confirmLabel}

@@ -56,6 +56,18 @@ describe('http', () => {
     })
   })
 
+  it('sends a PATCH without body', async () => {
+    fetchMock.mockResolvedValue(jsonResponse(200, { id: 1 }))
+
+    await http.patch('/accounts/1/cancel')
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/accounts/1/cancel', {
+      method: 'PATCH',
+      headers: { Accept: 'application/json' },
+      body: undefined,
+    })
+  })
+
   it('returns undefined for a response without content', async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
 

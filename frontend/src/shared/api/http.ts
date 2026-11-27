@@ -74,5 +74,6 @@ export const http = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body: unknown) => request<T>('POST', path, body),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+  patch: <T>(path: string) => request<T>('PATCH', path),
   delete: (path: string) => request<void>('DELETE', path),
 }

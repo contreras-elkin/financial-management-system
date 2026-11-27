@@ -12,3 +12,15 @@ export function formatDate(isoDate: string): string {
 export function formatDateTime(isoDateTime: string): string {
   return `${formatDate(isoDateTime)} ${isoDateTime.slice(11, 16)}`
 }
+
+// Decimales explícitos: los datos de moneda de Chrome y de Node no coinciden para el COP.
+const currency = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+export function formatCurrency(amount: number): string {
+  return currency.format(amount)
+}
