@@ -12,6 +12,8 @@ const savings: Account = {
   number: '5300000001',
   status: 'ACTIVE',
   balance: 0,
+  overdraftLimit: 0,
+  availableBalance: 0,
   gmfExempt: true,
   clientId: 7,
   createdAt: '2026-11-26T10:00:00',
