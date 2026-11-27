@@ -1,16 +1,20 @@
+import AddIcon from '@mui/icons-material/Add'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
+import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useClients } from '../clients/hooks'
 import type { Client } from '../clients/types'
 import { AccountsTable } from './AccountsTable'
 import { useAccounts } from './hooks'
+import { OpenAccountDialog } from './OpenAccountDialog'
 
 const ALL_CLIENTS = ''
 
@@ -20,15 +24,21 @@ export function AccountsPage() {
   const clientIdParam = searchParams.get('clientId') ?? ALL_CLIENTS
   const clientId = clientIdParam === ALL_CLIENTS ? undefined : Number(clientIdParam)
   const { data: clients = [] } = useClients()
+  const [opening, setOpening] = useState(false)
 
   const changeClient = (value: string) =>
     setSearchParams(value === ALL_CLIENTS ? {} : { clientId: value }, { replace: true })
 
   return (
     <>
-      <Typography variant="h4" component="h1" sx={{ mb: 2 }}>
-        Cuentas
-      </Typography>
+      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h4" component="h1">
+          Cuentas
+        </Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpening(true)}>
+          Abrir cuenta
+        </Button>
+      </Stack>
 
       <TextField
         select
@@ -48,6 +58,8 @@ export function AccountsPage() {
       </TextField>
 
       <AccountsContent clientId={clientId} clients={clients} />
+
+      {opening && <OpenAccountDialog clients={clients} clientId={clientId} onClose={() => setOpening(false)} />}
     </>
   )
 }
