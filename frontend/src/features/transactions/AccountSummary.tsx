@@ -9,16 +9,18 @@ import { formatCurrency } from '../../shared/format'
 type AccountSummaryProps = {
   account: Account
   clientName: string
+  actions?: ReactNode
 }
 
-export function AccountSummary({ account, clientName }: AccountSummaryProps) {
+export function AccountSummary({ account, clientName, actions }: AccountSummaryProps) {
   return (
     <Paper component="section" aria-label="Resumen de la cuenta" sx={{ p: 3, mb: 2 }}>
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, mb: 2 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mb: 2 }}>
         <Typography variant="h6" component="h2" sx={{ fontFamily: 'monospace' }}>
           {account.number}
         </Typography>
         <AccountStatusChip status={account.status} />
+        {actions && <Stack direction="row" sx={{ gap: 1, ml: 'auto' }}>{actions}</Stack>}
       </Stack>
       <Stack direction="row" sx={{ flexWrap: 'wrap', columnGap: 6, rowGap: 2 }}>
         <Figure label="Saldo">

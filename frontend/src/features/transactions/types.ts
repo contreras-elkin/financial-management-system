@@ -28,6 +28,14 @@ export type DepositInput = {
 
 export type WithdrawalInput = DepositInput
 
+// Movimientos de una sola cuenta: comparten diálogo porque solo piden el monto.
+export type MovementKind = 'deposit' | 'withdrawal'
+
+export const movementLabels: Record<MovementKind, string> = {
+  deposit: 'Consignar',
+  withdrawal: 'Retirar',
+}
+
 export type TransferInput = {
   sourceAccountId: number
   targetAccountId: number

@@ -1,3 +1,5 @@
+import AddIcon from '@mui/icons-material/Add'
+import RemoveIcon from '@mui/icons-material/Remove'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -6,6 +8,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useAccounts } from '../accounts/hooks'
 import { accountTypeLabels, type Account } from '../accounts/types'
@@ -13,7 +16,9 @@ import { fullName } from '../clients/format'
 import { useClients } from '../clients/hooks'
 import { AccountSummary } from './AccountSummary'
 import { useAccountTransactions } from './hooks'
+import { MovementDialog } from './MovementDialog'
 import { TransactionsTable } from './TransactionsTable'
+import { movementLabels, type MovementKind } from './types'
 
 const NO_ACCOUNT = ''
 
@@ -27,6 +32,9 @@ export function TransactionsPage() {
   const namesById = new Map(clients.map((client) => [client.id, fullName(client)]))
   const clientName = (id: number) => namesById.get(id) ?? `Cliente ${id}`
   const account = accounts?.find((candidate) => String(candidate.id) === accountIdParam)
+
+  const [dialog, setDialog] = useState<DialogState>({ mode: 'closed' })
+  const closeDialog = () => setDialog({ mode: 'closed' })
 
   const changeAccount = (value: string) => setSearchParams(value === NO_ACCOUNT ? {} : { accountId: value }, { replace: true })
 
@@ -64,7 +72,7 @@ export function TransactionsPage() {
             value={account ? accountIdParam : NO_ACCOUNT}
             onChange={(event) => changeAccount(event.target.value)}
             slotProps={{ select: { displayEmpty: true }, inputLabel: { shrink: true } }}
-            sx={{ minWidth: 360, mb: 2, bgcolor: 'background.paper' }}
+            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 360 }, mb: 2, bgcolor: 'background.paper' }}
           >
             <MenuItem value={NO_ACCOUNT} disabled>
               Selecciona una cuenta
@@ -78,8 +86,15 @@ export function TransactionsPage() {
 
           {account ? (
             <>
-              <AccountSummary account={account} clientName={clientName(account.clientId)} />
+              <AccountSummary
+                account={account}
+                clientName={clientName(account.clientId)}
+                actions={<MovementActions account={account} onOpen={setDialog} />}
+              />
               <TransactionsContent account={account} accounts={accounts} />
+              {dialog.mode === 'movement' && (
+                <MovementDialog kind={dialog.kind} account={account} onClose={closeDialog} />
+              )}
             </>
           ) : (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -92,6 +107,38 @@ export function TransactionsPage() {
           )}
         </>
       )}
+    </>
+  )
+}
+
+type DialogState = { mode: 'closed' } | { mode: 'movement'; kind: MovementKind }
+
+type MovementActionsProps = {
+  account: Account
+  onOpen: (dialog: DialogState) => void
+}
+
+// Igual que el backend, solo una cuenta activa admite movimientos.
+function MovementActions({ account, onOpen }: MovementActionsProps) {
+  if (account.status !== 'ACTIVE') {
+    return (
+      <Typography variant="body2" color="text.secondary">
+        La cuenta no está activa: no admite movimientos.
+      </Typography>
+    )
+  }
+  return (
+    <>
+      <Button variant="contained" startIcon={<AddIcon />} onClick={() => onOpen({ mode: 'movement', kind: 'deposit' })}>
+        {movementLabels.deposit}
+      </Button>
+      <Button
+        variant="outlined"
+        startIcon={<RemoveIcon />}
+        onClick={() => onOpen({ mode: 'movement', kind: 'withdrawal' })}
+      >
+        {movementLabels.withdrawal}
+      </Button>
     </>
   )
 }
