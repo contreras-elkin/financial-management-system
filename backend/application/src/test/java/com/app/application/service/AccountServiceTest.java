@@ -245,13 +245,13 @@ class AccountServiceTest {
     }
 
     private static Account account(AccountStatus status, BigDecimal balance) {
-        return Account.restore(ACCOUNT_ID, AccountType.SAVINGS, SAVINGS_NUMBER, status, balance, false, CLIENT_ID,
-                CREATED_AT, CREATED_AT);
+        return Account.restore(ACCOUNT_ID, AccountType.SAVINGS, SAVINGS_NUMBER, status, balance, BigDecimal.ZERO,
+                false, CLIENT_ID, CREATED_AT, CREATED_AT);
     }
 
     private static Account withId(Account account) {
         return Account.restore(ACCOUNT_ID, account.getType(), account.getNumber(), account.getStatus(),
-                account.getBalance(), account.isGmfExempt(), account.getClientId(), account.getCreatedAt(),
+                account.getBalance(), account.getOverdraftLimit(), account.isGmfExempt(), account.getClientId(), account.getCreatedAt(),
                 account.getUpdatedAt());
     }
 }

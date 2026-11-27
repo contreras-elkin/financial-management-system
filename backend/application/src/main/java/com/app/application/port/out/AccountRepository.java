@@ -11,6 +11,10 @@ public interface AccountRepository {
 
     Optional<Account> findById(Long id);
 
+    // Bloquea la cuenta hasta que termine la transacción, para que dos movimientos simultáneos
+    // no calculen el saldo sobre el mismo valor.
+    Optional<Account> findByIdForUpdate(Long id);
+
     List<Account> findAll();
 
     List<Account> findByClientId(Long clientId);

@@ -46,6 +46,31 @@ class AccountTest {
     }
 
     @Test
+    void create_savingsAccountHasNoOverdraft() {
+        Account account = Account.create(AccountType.SAVINGS, SAVINGS_NUMBER, CLIENT_ID, false, NOW);
+
+        assertThat(account.getOverdraftLimit()).isEqualTo(new BigDecimal("0.00"));
+        assertThat(account.availableBalance()).isEqualTo(new BigDecimal("0.00"));
+    }
+
+    @Test
+    void create_checkingAccountGetsDefaultOverdraft() {
+        Account account = Account.create(AccountType.CHECKING, CHECKING_NUMBER, CLIENT_ID, false, NOW);
+
+        assertThat(account.getOverdraftLimit()).isEqualTo(new BigDecimal("1000000.00"));
+        assertThat(account.availableBalance()).isEqualTo(new BigDecimal("1000000.00"));
+    }
+
+    @Test
+    void availableBalance_addsOverdraftToBalance() {
+        Account overdrawn = Account.restore(1L, AccountType.CHECKING, CHECKING_NUMBER, AccountStatus.ACTIVE,
+                new BigDecimal("-250000.00"), new BigDecimal("1000000.00"), false, CLIENT_ID, CREATED_AT,
+                CREATED_AT);
+
+        assertThat(overdrawn.availableBalance()).isEqualTo(new BigDecimal("750000.00"));
+    }
+
+    @Test
     void create_withoutType_throws() {
         assertThatThrownBy(() -> Account.create(null, SAVINGS_NUMBER, CLIENT_ID, false, NOW))
                 .isInstanceOf(InvalidAccountDataException.class);
@@ -151,7 +176,7 @@ class AccountTest {
     }
 
     private static Account restore(AccountStatus status, BigDecimal balance) {
-        return Account.restore(1L, AccountType.SAVINGS, SAVINGS_NUMBER, status, balance, false, CLIENT_ID,
-                CREATED_AT, CREATED_AT);
+        return Account.restore(1L, AccountType.SAVINGS, SAVINGS_NUMBER, status, balance, BigDecimal.ZERO, false,
+                CLIENT_ID, CREATED_AT, CREATED_AT);
     }
 }

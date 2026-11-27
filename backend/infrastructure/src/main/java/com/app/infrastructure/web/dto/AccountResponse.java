@@ -13,6 +13,8 @@ public record AccountResponse(
         String number,
         AccountStatus status,
         BigDecimal balance,
+        BigDecimal overdraftLimit,
+        BigDecimal availableBalance,
         boolean gmfExempt,
         Long clientId,
         LocalDateTime createdAt,
@@ -20,7 +22,7 @@ public record AccountResponse(
 ) {
     public static AccountResponse from(Account account) {
         return new AccountResponse(account.getId(), account.getType(), account.getNumber(), account.getStatus(),
-                account.getBalance(), account.isGmfExempt(), account.getClientId(), account.getCreatedAt(),
-                account.getUpdatedAt());
+                account.getBalance(), account.getOverdraftLimit(), account.availableBalance(), account.isGmfExempt(),
+                account.getClientId(), account.getCreatedAt(), account.getUpdatedAt());
     }
 }

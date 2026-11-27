@@ -129,6 +129,19 @@ class AccountControllerTest {
     }
 
     @Test
+    void findById_checkingAccount_returnsOverdraftAndAvailableBalance() throws Exception {
+        Account overdrawn = Account.restore(2L, AccountType.CHECKING, "3300000001", AccountStatus.ACTIVE,
+                new BigDecimal("-250000.00"), new BigDecimal("1000000.00"), false, 7L, CREATED_AT, CREATED_AT);
+        when(accountUseCase.findById(2L)).thenReturn(overdrawn);
+
+        mockMvc.perform(get(BASE_URL + "/2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(-250000.00))
+                .andExpect(jsonPath("$.overdraftLimit").value(1000000.00))
+                .andExpect(jsonPath("$.availableBalance").value(750000.00));
+    }
+
+    @Test
     void findById_whenAccountDoesNotExist_returns404() throws Exception {
         when(accountUseCase.findById(99L)).thenThrow(new AccountNotFoundException(99L));
 
@@ -212,7 +225,7 @@ class AccountControllerTest {
     // ---------- helpers ----------
 
     private static Account account(Long id, AccountStatus status) {
-        return Account.restore(id, AccountType.SAVINGS, "5300000001", status, BigDecimal.ZERO, true, 7L,
-                CREATED_AT, CREATED_AT);
+        return Account.restore(id, AccountType.SAVINGS, "5300000001", status, BigDecimal.ZERO, BigDecimal.ZERO,
+                true, 7L, CREATED_AT, CREATED_AT);
     }
 }
