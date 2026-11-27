@@ -12,6 +12,7 @@ import { NavLink, Outlet, useNavigation } from 'react-router'
 const navItems = [
   { label: 'Inicio', to: '/' },
   { label: 'Clientes', to: '/clients' },
+  { label: 'Cuentas', to: '/accounts' },
 ]
 
 export function Layout() {
