@@ -65,7 +65,7 @@ function accountRequests() {
 }
 
 describe('AccountsPage', () => {
-  beforeAll(() => import('./AccountsPage'))
+  beforeAll(() => Promise.all([import('./AccountsPage'), import('../transactions/TransactionsPage')]))
 
   beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
@@ -159,5 +159,18 @@ describe('AccountsPage', () => {
     await user.click(within(nav).getByRole('link', { name: 'Cuentas' }))
 
     expect(await screen.findByRole('heading', { name: 'Cuentas' })).toBeInTheDocument()
+  })
+
+  it('opens the statement of an account', async () => {
+    const user = userEvent.setup()
+    mockApi({ '/api/accounts': [savings, checking], '/api/accounts/10/transactions': [] })
+    await renderRoute('/accounts')
+    await screen.findByRole('table', { name: 'Cuentas' })
+
+    await user.click(screen.getByRole('link', { name: 'Ver movimientos de la cuenta 5300000001' }))
+
+    expect(await screen.findByRole('heading', { name: 'Movimientos' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '5300000001' })).toBeInTheDocument()
+    expect(await screen.findByText('Esta cuenta no tiene movimientos.')).toBeInTheDocument()
   })
 })

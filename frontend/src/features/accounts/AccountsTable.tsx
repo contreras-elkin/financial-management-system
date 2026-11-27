@@ -1,6 +1,7 @@
 import BlockIcon from '@mui/icons-material/Block'
 import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined'
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined'
 import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
@@ -12,6 +13,7 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import { Link } from 'react-router'
 import { formatCurrency, formatDateTime } from '../../shared/format'
 import { AccountStatusChip } from './AccountStatusChip'
 import { accountTypeLabels, type Account, type AccountStatus, type AccountStatusAction } from './types'
@@ -97,6 +99,16 @@ export function AccountsTable({ accounts, clientName, onChangeStatus }: Accounts
               <TableCell>{formatDateTime(account.updatedAt)}</TableCell>
               {onChangeStatus && (
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  <Tooltip title="Ver movimientos">
+                    <IconButton
+                      size="small"
+                      component={Link}
+                      to={`/transactions?accountId=${account.id}`}
+                      aria-label={`Ver movimientos de la cuenta ${account.number}`}
+                    >
+                      <ReceiptLongOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                   {availableActions(account.status).map((action) => {
                     const { label, Icon } = actionButtons[action]
                     return (
