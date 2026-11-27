@@ -5,6 +5,7 @@ import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
+import Snackbar from '@mui/material/Snackbar'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -12,9 +13,13 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useClients } from '../clients/hooks'
 import type { Client } from '../clients/types'
+import { errorMessage } from '../../shared/api/errorMessage'
 import { AccountsTable } from './AccountsTable'
-import { useAccounts } from './hooks'
+import { CancelAccountDialog } from './CancelAccountDialog'
+import { accountErrorMessages } from './errorMessages'
+import { useAccounts, useChangeAccountStatus } from './hooks'
 import { OpenAccountDialog } from './OpenAccountDialog'
+import type { Account, AccountStatusAction } from './types'
 
 const ALL_CLIENTS = ''
 
@@ -24,10 +29,21 @@ export function AccountsPage() {
   const clientIdParam = searchParams.get('clientId') ?? ALL_CLIENTS
   const clientId = clientIdParam === ALL_CLIENTS ? undefined : Number(clientIdParam)
   const { data: clients = [] } = useClients()
-  const [opening, setOpening] = useState(false)
+  const [dialog, setDialog] = useState<DialogState>({ mode: 'closed' })
+  const closeDialog = () => setDialog({ mode: 'closed' })
+  const changeStatus = useChangeAccountStatus()
 
   const changeClient = (value: string) =>
     setSearchParams(value === ALL_CLIENTS ? {} : { clientId: value }, { replace: true })
+
+  // Activar e inactivar se pueden revertir y van directo; cancelar es definitivo y pide confirmación.
+  const handleChangeStatus = (account: Account, action: AccountStatusAction) => {
+    if (action === 'cancel') {
+      setDialog({ mode: 'cancel', account })
+    } else {
+      changeStatus.mutate({ id: account.id, action })
+    }
+  }
 
   return (
     <>
@@ -35,7 +51,7 @@ export function AccountsPage() {
         <Typography variant="h4" component="h1">
           Cuentas
         </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpening(true)}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialog({ mode: 'open' })}>
           Abrir cuenta
         </Button>
       </Stack>
@@ -57,18 +73,33 @@ export function AccountsPage() {
         ))}
       </TextField>
 
-      <AccountsContent clientId={clientId} clients={clients} />
+      <AccountsContent clientId={clientId} clients={clients} onChangeStatus={handleChangeStatus} />
 
-      {opening && <OpenAccountDialog clients={clients} clientId={clientId} onClose={() => setOpening(false)} />}
+      {dialog.mode === 'open' && <OpenAccountDialog clients={clients} clientId={clientId} onClose={closeDialog} />}
+      {dialog.mode === 'cancel' && <CancelAccountDialog account={dialog.account} onClose={closeDialog} />}
+
+      <Snackbar open={changeStatus.isError} autoHideDuration={6000} onClose={() => changeStatus.reset()}>
+        <Alert severity="error" variant="filled" onClose={() => changeStatus.reset()}>
+          {changeStatus.error && errorMessage(changeStatus.error, accountErrorMessages)}
+        </Alert>
+      </Snackbar>
     </>
   )
 }
+
+type DialogState = { mode: 'closed' } | { mode: 'open' } | { mode: 'cancel'; account: Account }
 
 function fullName(client: Client) {
   return `${client.firstName} ${client.lastName}`
 }
 
-function AccountsContent({ clientId, clients }: { clientId?: number; clients: Client[] }) {
+type AccountsContentProps = {
+  clientId?: number
+  clients: Client[]
+  onChangeStatus: (account: Account, action: AccountStatusAction) => void
+}
+
+function AccountsContent({ clientId, clients, onChangeStatus }: AccountsContentProps) {
   const { data: accounts, isPending, isError, refetch } = useAccounts(clientId)
 
   if (isPending) {
@@ -107,5 +138,5 @@ function AccountsContent({ clientId, clients }: { clientId?: number; clients: Cl
   const namesById = new Map(clients.map((client) => [client.id, fullName(client)]))
   const clientName = (id: number) => namesById.get(id) ?? `Cliente ${id}`
 
-  return <AccountsTable accounts={accounts} clientName={clientName} />
+  return <AccountsTable accounts={accounts} clientName={clientName} onChangeStatus={onChangeStatus} />
 }

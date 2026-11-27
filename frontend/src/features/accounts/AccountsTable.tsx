@@ -1,4 +1,8 @@
+import BlockIcon from '@mui/icons-material/Block'
+import PauseCircleOutlinedIcon from '@mui/icons-material/PauseCircleOutlined'
+import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined'
 import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -9,14 +13,34 @@ import TableRow from '@mui/material/TableRow'
 import Tooltip from '@mui/material/Tooltip'
 import { formatCurrency, formatDateTime } from '../../shared/format'
 import { AccountStatusChip } from './AccountStatusChip'
-import { accountTypeLabels, type Account } from './types'
+import { accountTypeLabels, type Account, type AccountStatus, type AccountStatusAction } from './types'
+
+const actionButtons = {
+  activate: { label: 'Activar', Icon: PlayCircleOutlinedIcon },
+  inactivate: { label: 'Inactivar', Icon: PauseCircleOutlinedIcon },
+  cancel: { label: 'Cancelar', Icon: BlockIcon },
+} satisfies Record<AccountStatusAction, unknown>
+
+// Mismas transiciones que AccountStatus.canTransitionTo del backend; una cancelada ya no admite cambios.
+function availableActions(status: AccountStatus): AccountStatusAction[] {
+  switch (status) {
+    case 'ACTIVE':
+      return ['inactivate', 'cancel']
+    case 'INACTIVE':
+      return ['activate', 'cancel']
+    case 'CANCELLED':
+      return []
+  }
+}
 
 type AccountsTableProps = {
   accounts: Account[]
   clientName: (clientId: number) => string
+  // Sin acciones, la tabla es de solo lectura.
+  onChangeStatus?: (account: Account, action: AccountStatusAction) => void
 }
 
-export function AccountsTable({ accounts, clientName }: AccountsTableProps) {
+export function AccountsTable({ accounts, clientName, onChangeStatus }: AccountsTableProps) {
   return (
     <TableContainer component={Paper}>
       <Table aria-label="Cuentas">
@@ -29,6 +53,7 @@ export function AccountsTable({ accounts, clientName }: AccountsTableProps) {
             <TableCell>Estado</TableCell>
             <TableCell>Fecha de creación</TableCell>
             <TableCell>Última modificación</TableCell>
+            {onChangeStatus && <TableCell align="right">Acciones</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -57,6 +82,25 @@ export function AccountsTable({ accounts, clientName }: AccountsTableProps) {
               </TableCell>
               <TableCell>{formatDateTime(account.createdAt)}</TableCell>
               <TableCell>{formatDateTime(account.updatedAt)}</TableCell>
+              {onChangeStatus && (
+                <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                  {availableActions(account.status).map((action) => {
+                    const { label, Icon } = actionButtons[action]
+                    return (
+                      <Tooltip key={action} title={label}>
+                        <IconButton
+                          size="small"
+                          onClick={() => onChangeStatus(account, action)}
+                          aria-label={`${label} la cuenta ${account.number}`}
+                          sx={action === 'cancel' ? { '&:hover': { color: 'error.main' } } : undefined}
+                        >
+                          <Icon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )
+                  })}
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
