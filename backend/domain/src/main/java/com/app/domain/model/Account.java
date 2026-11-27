@@ -18,38 +18,45 @@ public class Account {
     private final String number;
     private AccountStatus status;
     private final BigDecimal balance;
+    private final BigDecimal overdraftLimit;
     private final boolean gmfExempt;
     private final Long clientId;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     private Account(Long id, AccountType type, String number, AccountStatus status, BigDecimal balance,
-                    boolean gmfExempt, Long clientId, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                    BigDecimal overdraftLimit, boolean gmfExempt, Long clientId, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.type = type;
         this.number = number;
         this.status = status;
         this.balance = balance;
+        this.overdraftLimit = overdraftLimit;
         this.gmfExempt = gmfExempt;
         this.clientId = clientId;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
 
-    /**
-     * El número lo genera quien llama, porque su unicidad depende de los demás; aquí solo se valida el formato.
-     */
+    // El número lo genera quien llama, porque su unicidad depende de las demás cuentas; aquí solo se valida
+    // el formato. El cupo se copia del tipo para que un cambio de política no afecte a las cuentas abiertas.
     public static Account create(AccountType type, String number, Long clientId, boolean gmfExempt,
                                  LocalDateTime now) {
         validate(type, number, clientId);
-        return new Account(null, type, number, AccountStatus.ACTIVE, INITIAL_BALANCE, gmfExempt, clientId,
-                now, now);
+        return new Account(null, type, number, AccountStatus.ACTIVE, INITIAL_BALANCE,
+                type.getDefaultOverdraftLimit(), gmfExempt, clientId, now, now);
     }
 
     public static Account restore(Long id, AccountType type, String number, AccountStatus status,
-                                  BigDecimal balance, boolean gmfExempt, Long clientId,
-                                  LocalDateTime createdAt, LocalDateTime updatedAt) {
-        return new Account(id, type, number, status, balance, gmfExempt, clientId, createdAt, updatedAt);
+                                  BigDecimal balance, BigDecimal overdraftLimit, boolean gmfExempt,
+                                  Long clientId, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        return new Account(id, type, number, status, balance, overdraftLimit, gmfExempt, clientId, createdAt,
+                updatedAt);
+    }
+
+    // Se calcula y no se guarda: así nunca puede quedar desalineado del saldo.
+    public BigDecimal availableBalance() {
+        return balance.add(overdraftLimit);
     }
 
     public void activate(LocalDateTime now) {
@@ -98,6 +105,7 @@ public class Account {
     public String getNumber() { return number; }
     public AccountStatus getStatus() { return status; }
     public BigDecimal getBalance() { return balance; }
+    public BigDecimal getOverdraftLimit() { return overdraftLimit; }
     public boolean isGmfExempt() { return gmfExempt; }
     public Long getClientId() { return clientId; }
     public LocalDateTime getCreatedAt() { return createdAt; }

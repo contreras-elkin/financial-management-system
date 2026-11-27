@@ -1,20 +1,24 @@
 package com.app.domain.model;
 
-/**
- * Tipos de producto financiero que la entidad ofrece. Cada tipo conoce el prefijo
- * con el que empiezan sus números de cuenta.
- */
+import java.math.BigDecimal;
+
 public enum AccountType {
-    SAVINGS("53"),   // Cuenta de ahorros
-    CHECKING("33");  // Cuenta corriente
+    SAVINGS("53", new BigDecimal("0.00")),           // Cuenta de ahorros: nunca baja de $0
+    CHECKING("33", new BigDecimal("1000000.00"));    // Cuenta corriente: admite sobregiro
 
     private final String numberPrefix;
+    private final BigDecimal defaultOverdraftLimit;
 
-    AccountType(String numberPrefix) {
+    AccountType(String numberPrefix, BigDecimal defaultOverdraftLimit) {
         this.numberPrefix = numberPrefix;
+        this.defaultOverdraftLimit = defaultOverdraftLimit;
     }
 
     public String getNumberPrefix() {
         return numberPrefix;
+    }
+
+    public BigDecimal getDefaultOverdraftLimit() {
+        return defaultOverdraftLimit;
     }
 }
