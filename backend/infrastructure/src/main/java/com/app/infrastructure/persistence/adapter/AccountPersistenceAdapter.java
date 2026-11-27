@@ -37,6 +37,12 @@ public class AccountPersistenceAdapter implements AccountRepository {
     }
 
     @Override
+    public Optional<Account> findByIdForUpdate(Long id) {
+        return accountJpaRepository.findLockedById(id)
+                .map(accountPersistenceMapper::toDomain);
+    }
+
+    @Override
     public List<Account> findAll() {
         return accountJpaRepository.findAll(Sort.by("id")).stream()
                 .map(accountPersistenceMapper::toDomain)
