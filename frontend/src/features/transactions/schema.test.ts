@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { movementSchema, toAmount } from './schema'
+import { movementSchema, toAmount, transferSchema } from './schema'
 
 function amountError(amount: string) {
   const result = movementSchema.safeParse({ amount })
@@ -21,6 +21,22 @@ describe('movementSchema', () => {
 
   it('rejects a zero amount', () => {
     expect(amountError('0,00')).toBe('El monto debe ser mayor a $ 0')
+  })
+})
+
+describe('transferSchema', () => {
+  it('requires the destination account and validates the amount', () => {
+    const result = transferSchema.safeParse({ targetAccountId: '', amount: '0' })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual([
+      'Selecciona la cuenta destino',
+      'El monto debe ser mayor a $ 0',
+    ])
+  })
+
+  it('accepts a destination and a valid amount', () => {
+    expect(transferSchema.safeParse({ targetAccountId: '11', amount: '30000' }).success).toBe(true)
   })
 })
 

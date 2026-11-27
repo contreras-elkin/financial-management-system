@@ -1,5 +1,6 @@
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,14 +11,16 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { accountLabel } from '../accounts/format'
 import { useAccounts } from '../accounts/hooks'
-import { accountTypeLabels, type Account } from '../accounts/types'
+import type { Account } from '../accounts/types'
 import { fullName } from '../clients/format'
 import { useClients } from '../clients/hooks'
 import { AccountSummary } from './AccountSummary'
 import { useAccountTransactions } from './hooks'
 import { MovementDialog } from './MovementDialog'
 import { TransactionsTable } from './TransactionsTable'
+import { TransferDialog } from './TransferDialog'
 import { movementLabels, type MovementKind } from './types'
 
 const NO_ACCOUNT = ''
@@ -95,6 +98,9 @@ export function TransactionsPage() {
               {dialog.mode === 'movement' && (
                 <MovementDialog kind={dialog.kind} account={account} onClose={closeDialog} />
               )}
+              {dialog.mode === 'transfer' && (
+                <TransferDialog source={account} accounts={accounts} clientName={clientName} onClose={closeDialog} />
+              )}
             </>
           ) : (
             <Paper sx={{ p: 4, textAlign: 'center' }}>
@@ -111,7 +117,7 @@ export function TransactionsPage() {
   )
 }
 
-type DialogState = { mode: 'closed' } | { mode: 'movement'; kind: MovementKind }
+type DialogState = { mode: 'closed' } | { mode: 'movement'; kind: MovementKind } | { mode: 'transfer' }
 
 type MovementActionsProps = {
   account: Account
@@ -139,12 +145,11 @@ function MovementActions({ account, onOpen }: MovementActionsProps) {
       >
         {movementLabels.withdrawal}
       </Button>
+      <Button variant="outlined" startIcon={<SwapHorizIcon />} onClick={() => onOpen({ mode: 'transfer' })}>
+        Transferir
+      </Button>
     </>
   )
-}
-
-function accountLabel(account: Account, clientName: string) {
-  return `${account.number} · ${accountTypeLabels[account.type]} · ${clientName}`
 }
 
 type TransactionsContentProps = {

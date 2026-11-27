@@ -15,6 +15,14 @@ export const movementSchema = z.object({ amount: amountSchema })
 
 export type MovementValues = z.infer<typeof movementSchema>
 
+// targetAccountId es texto porque es el valor de un select; se convierte a número al enviar.
+export const transferSchema = z.object({
+  targetAccountId: z.string().min(1, 'Selecciona la cuenta destino'),
+  amount: amountSchema,
+})
+
+export type TransferValues = z.infer<typeof transferSchema>
+
 export function toAmount(value: string) {
   return Number(value.trim().replace(',', '.'))
 }
