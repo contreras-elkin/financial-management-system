@@ -100,4 +100,22 @@ describe('DeleteClientDialog', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('El cliente ya no existe. Actualiza la lista.')
     expect(screen.getByRole('dialog', { name: 'Eliminar cliente' })).toBeInTheDocument()
   })
+
+  it('explains that a client with products cannot be deleted', async () => {
+    const user = userEvent.setup()
+    mockApi(
+      () =>
+        new Response(
+          JSON.stringify({ title: 'Conflict with current state', detail: 'Has products', code: 'CLIENT_HAS_PRODUCTS' }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+    )
+    const dialog = await openDeleteDialog(user)
+
+    await user.click(within(dialog).getByRole('button', { name: 'Eliminar' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'No se puede eliminar un cliente con productos vinculados.',
+    )
+  })
 })

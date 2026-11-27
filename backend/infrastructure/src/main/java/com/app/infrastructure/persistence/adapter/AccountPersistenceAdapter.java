@@ -51,6 +51,11 @@ public class AccountPersistenceAdapter implements AccountRepository {
     }
 
     @Override
+    public boolean existsByClientId(Long clientId) {
+        return accountJpaRepository.existsByClientId(clientId);
+    }
+
+    @Override
     public boolean existsOpenGmfExemptAccount(Long clientId) {
         return accountJpaRepository.existsByClientIdAndGmfExemptTrueAndStatusNot(clientId, AccountStatus.CANCELLED);
     }

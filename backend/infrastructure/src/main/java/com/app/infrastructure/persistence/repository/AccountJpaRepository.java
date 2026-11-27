@@ -11,5 +11,7 @@ public interface AccountJpaRepository extends JpaRepository<AccountEntity, Long>
 
     List<AccountEntity> findByClientIdOrderByIdAsc(Long clientId);
 
+    boolean existsByClientId(Long clientId);
+
     boolean existsByClientIdAndGmfExemptTrueAndStatusNot(Long clientId, AccountStatus status);
 }

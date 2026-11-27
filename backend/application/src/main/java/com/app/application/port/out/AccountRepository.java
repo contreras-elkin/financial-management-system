@@ -5,10 +5,6 @@ import com.app.domain.model.Account;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Puerto de salida: lo que la aplicación necesita de la persistencia de cuentas.
- * Lo implementa un adaptador en infrastructure.
- */
 public interface AccountRepository {
 
     Account save(Account account);
@@ -18,6 +14,8 @@ public interface AccountRepository {
     List<Account> findAll();
 
     List<Account> findByClientId(Long clientId);
+
+    boolean existsByClientId(Long clientId);
 
     /**
      * Indica si el cliente ya tiene una cuenta exenta de GMF que no esté cancelada.
