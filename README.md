@@ -105,6 +105,90 @@ npm run lint
 npm run build
 ```
 
+## Arquitectura
+
+### Componentes
+
+```mermaid
+flowchart LR
+    browser[Navegador] --> web
+    subgraph compose[Docker Compose]
+        web["web<br/>nginx + React"] -->|/api| api["api<br/>Spring Boot"]
+        api --> db[("db<br/>PostgreSQL")]
+    end
+```
+
+- **web:** nginx sirve el build de React y reenvía `/api` a la API (reverse proxy). Front y API comparten origen, así que no hace falta CORS y la API no queda expuesta.
+- **api:** Spring Boot con Flyway. Solo se publica el puerto para desarrollo; en producción solo la alcanza nginx.
+- **db:** PostgreSQL con volumen persistente y sin puertos publicados.
+
+### Backend: arquitectura hexagonal
+
+El backend es un proyecto Maven con tres módulos. Las dependencias van siempre hacia el dominio y las impone el compilador: `domain` y `application` no declaran Spring en sus `pom.xml`, así que no pueden usarlo aunque alguien lo intente.
+
+```mermaid
+flowchart LR
+    subgraph infrastructure
+        web["web<br/>controllers y DTO"]
+        persistence["persistence<br/>adaptadores JPA"]
+        config["config<br/>composition root"]
+    end
+    subgraph application
+        in["port.in<br/>casos de uso"]
+        service["service"]
+        out["port.out<br/>repositorios"]
+    end
+    subgraph domain
+        model["model<br/>entidades y reglas"]
+    end
+    web --> in
+    service -. implementa .-> in
+    service --> out
+    persistence -. implementa .-> out
+    service --> model
+    config -. arma .-> service
+```
+
+| Módulo | Contiene | Depende de |
+|---|---|---|
+| `domain` | Entidades con sus reglas (`Client`, `Account`, `Transaction`), enums y excepciones de negocio | Nada (Java puro) |
+| `application` | Puertos de entrada (`ClientUseCase`...), puertos de salida (`ClientRepository`...) y servicios que orquestan los casos de uso | `domain` |
+| `infrastructure` | Controllers REST, adaptadores de persistencia, entidades JPA, migraciones, configuración y la clase `main` | `application`, Spring |
+
+Las capas que pide la prueba están en estos paquetes:
+
+| Capa | Dónde |
+|---|---|
+| **Entity** | `domain/model` (dominio) y `infrastructure/persistence/entity` (mapeo JPA, separado del dominio) |
+| **Service** | `application/service` |
+| **Controller** | `infrastructure/web/controller` |
+| **Repository** | `application/port/out` (puerto) e `infrastructure/persistence` (adaptador y Spring Data) |
+
+Recorrido de una petición, por ejemplo una consignación:
+
+```
+TransactionController (DTO → comando)
+  → TransactionalTransactionUseCase (abre la transacción)
+    → TransactionService (bloquea la cuenta y orquesta)
+      → Account.deposit (regla de negocio: cambia el saldo y crea el movimiento)
+    → AccountRepository / TransactionRepository (puertos)
+      → adaptadores JPA → PostgreSQL
+```
+
+### Frontend
+
+```
+frontend/src/
+├── app/          # composition root: providers, tema, rutas
+├── shared/       # lo transversal: cliente HTTP, Layout, componentes y formato
+└── features/     # un dominio por carpeta
+    ├── clients/
+    ├── accounts/
+    └── transactions/
+```
+
+Cada feature tiene la misma estructura: `types.ts` (espejo del contrato de la API), `api.ts` (endpoints), `hooks.ts` (estado del servidor con TanStack Query), `schema.ts` (validación con Zod), `errorMessages.ts` y los componentes con sus tests. Cada página se carga bajo demanda, en un archivo aparte que solo se descarga al visitarla.
+
 ## API REST
 
 | Método | Ruta | Descripción |
@@ -139,6 +223,42 @@ Los errores siguen el estándar `ProblemDetail` (RFC 9457) con una extensión `c
 | `400` | Datos inválidos (`VALIDATION_FAILED`, con el detalle por campo en `errors`) o una regla de negocio |
 | `404` | El recurso no existe (`CLIENT_NOT_FOUND`, `ACCOUNT_NOT_FOUND`) |
 | `409` | Conflicto con el estado actual (`CLIENT_HAS_PRODUCTS`, `INSUFFICIENT_FUNDS`, `ACCOUNT_NOT_ACTIVE`...) |
+
+## Patrones de diseño
+
+### Backend
+
+| Patrón | Dónde | Para qué |
+|---|---|---|
+| Puertos y adaptadores | `application/port`, `infrastructure/persistence/adapter` | El negocio no conoce JPA ni HTTP; cambiar de base de datos solo toca adaptadores |
+| Repository | `ClientRepository`, `AccountRepository`, `TransactionRepository` | Acceso a datos como si fuera una colección del dominio |
+| Adapter | `*PersistenceAdapter`, `SequenceAccountNumberGenerator` | Traducen los puertos a Spring Data y a secuencias de PostgreSQL |
+| Decorator | `TransactionalClientUseCase`, `TransactionalAccountUseCase`, `TransactionalTransactionUseCase` | Agregan `@Transactional` alrededor del caso de uso sin meter Spring en el servicio |
+| Composition root | `ClientConfig`, `AccountConfig`, `TransactionConfig` | Un solo lugar donde se arma cada caso de uso con sus dependencias |
+| Static factory method | `Client.create` / `restore`, `Account.create` / `restore` | `create` valida las reglas de un objeto nuevo; `restore` reconstruye uno guardado sin volver a validar |
+| Modelo de dominio rico | `Account.deposit`, `withdraw`, `transferTo` | La cuenta cambia su saldo y devuelve el movimiento: no puede haber saldo sin registro |
+| Máquina de estados | `AccountStatus.canTransitionTo` | Transiciones permitidas en un `switch` exhaustivo; `CANCELLED` es terminal |
+| Command y DTO | `*Command`, `*Request.toCommand()`, `*Response.from()` | El contrato HTTP y el del caso de uso evolucionan por separado |
+| Data Mapper | `*PersistenceMapper` | Entidad JPA y entidad de dominio separadas |
+| Jerarquía de excepciones | `DomainException` → `NotFoundException` / `ConflictException` | Cada excepción elige su status HTTP al heredar |
+
+### Frontend
+
+| Patrón | Dónde | Para qué |
+|---|---|---|
+| Contenedor y presentacional | `AccountsPage` / `AccountsTable`, `TransactionsPage` / `TransactionsTable` | La página obtiene los datos; la tabla solo los pinta |
+| Adapter | `shared/api/http.ts` | Traduce `fetch` y `ProblemDetail` a `ApiError`; el resto del front no conoce el formato de error |
+| Custom hooks | `features/*/hooks.ts` | Encapsulan consultas, mutaciones e invalidación de caché |
+| Fábrica de claves | `clientKeys`, `accountKeys`, `transactionKeys` | Las claves de caché en un solo lugar; invalidar por prefijo refresca todas las listas |
+| Reverse proxy | nginx (`/api`), CloudFront | Un solo origen para front y API |
+
+## Principios SOLID
+
+- **S (responsabilidad única):** cada clase tiene un motivo para cambiar. `Account` decide las reglas, `AccountService` orquesta (buscar, aplicar, guardar), `AccountController` traduce HTTP, el adaptador persiste y el decorador maneja la transacción.
+- **O (abierto/cerrado):** `GlobalExceptionHandler` tiene un método por categoría (`NotFoundException` → 404, `ConflictException` → 409, `DomainException` → 400) y no conoce las excepciones concretas. Al agregar transacciones aparecieron `INSUFFICIENT_FUNDS` y `ACCOUNT_NOT_ACTIVE`, y el handler no se modificó.
+- **L (sustitución de Liskov):** `TransactionalAccountUseCase` y `AccountService` implementan `AccountUseCase`. El controller recibe cualquiera de los dos y funciona igual.
+- **I (segregación de interfaces):** los puertos son pequeños y por responsabilidad. `AccountNumberGenerator` está separado de `AccountRepository`; en los tests del servicio cada uno se simula por su lado.
+- **D (inversión de dependencias):** los servicios dependen de interfaces definidas en `application` (`port.out`) y la infraestructura las implementa. Lo garantiza la estructura de módulos: `application` no puede ver `infrastructure`.
 
 ## Despliegue en AWS
 
