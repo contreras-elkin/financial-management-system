@@ -1,4 +1,6 @@
-import Button from '@mui/material/Button'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -6,20 +8,17 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import Tooltip from '@mui/material/Tooltip'
 import { formatDate, formatDateTime } from '../../shared/format'
 import type { Client } from './types'
 
 type ClientsTableProps = {
   clients: Client[]
-  /** Cada acción que se pase aparece como un botón en la fila; sin acciones, la tabla es de solo lectura. */
+  // Sin acciones, la tabla es de solo lectura.
   onEdit?: (client: Client) => void
   onDelete?: (client: Client) => void
 }
 
-/**
- * Componente de presentación: solo pinta los clientes que recibe.
- * No sabe de dónde vienen los datos, así que se reutiliza y se prueba sin HTTP.
- */
 export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
   const hasActions = onEdit !== undefined || onDelete !== undefined
 
@@ -53,23 +52,27 @@ export function ClientsTable({ clients, onEdit, onDelete }: ClientsTableProps) {
               {hasActions && (
                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                   {onEdit && (
-                    <Button
-                      size="small"
-                      onClick={() => onEdit(client)}
-                      aria-label={`Editar a ${client.firstName} ${client.lastName}`}
-                    >
-                      Editar
-                    </Button>
+                    <Tooltip title="Editar">
+                      <IconButton
+                        size="small"
+                        onClick={() => onEdit(client)}
+                        aria-label={`Editar a ${client.firstName} ${client.lastName}`}
+                      >
+                        <EditOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   )}
                   {onDelete && (
-                    <Button
-                      size="small"
-                      color="error"
-                      onClick={() => onDelete(client)}
-                      aria-label={`Eliminar a ${client.firstName} ${client.lastName}`}
-                    >
-                      Eliminar
-                    </Button>
+                    <Tooltip title="Eliminar">
+                      <IconButton
+                        size="small"
+                        onClick={() => onDelete(client)}
+                        aria-label={`Eliminar a ${client.firstName} ${client.lastName}`}
+                        sx={{ '&:hover': { color: 'error.main' } }}
+                      >
+                        <DeleteOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   )}
                 </TableCell>
               )}
